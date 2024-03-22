@@ -1,0 +1,45 @@
+name: Python application
+
+on:
+  push:
+    branches:
+      - 'main'
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '0 8 * * *'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout actions
+      uses: actions/checkout@v1
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+        
+    - name: wget
+      uses: wei/wget@v1
+      with:
+        args: https://opensheet.elk.sh/1b3qotAFrjHai7ny3AGGCTHsZ1xyl4yXviPU3Grqt940/by%20regions -O origin.json --no-check-certificate
+        
+    - name: Update
+      env:
+        APIKEY: ${{ secrets.APIKEY }}
+      run: |
+        python exec.py
+        
+    - name: Commit files
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git commit -a -m "update"
+        
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}

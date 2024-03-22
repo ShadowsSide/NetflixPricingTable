@@ -5,8 +5,8 @@ import json
 import pymongo
 import requests
 import paramiko
-import datetime
 from bs4 import BeautifulSoup
+from datetime import datetime
 from sshtunnel import SSHTunnelForwarder
 
 

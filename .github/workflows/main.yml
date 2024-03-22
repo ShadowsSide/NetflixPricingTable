@@ -3,43 +3,40 @@ name: Python application
 on:
   push:
     branches:
-      - 'main'
+      - "main"
   schedule:
     # * is a special character in YAML so you have to quote this string
-    - cron:  '0 8 * * *'
+    - cron: "0 8 * * *"
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - name: checkout actions
-      uses: actions/checkout@v1
+      - name: Checkout actions
+        uses: actions/checkout@v4
 
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.8
-        
-    - name: wget
-      uses: wei/wget@v1
-      with:
-        args: https://opensheet.elk.sh/1b3qotAFrjHai7ny3AGGCTHsZ1xyl4yXviPU3Grqt940/by%20regions -O origin.json --no-check-certificate
-        
-    - name: Update
-      env:
-        APIKEY: ${{ secrets.APIKEY }}
-      run: |
-        python exec.py
-        
-    - name: Commit files
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git commit -a -m "update"
-        
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: "pip"
+
+      - name: Update data
+        env:
+          SSHIP: ${{ secrets.SSHIP }}
+          SSHKEY: ${{ secrets.SSHKEY }}
+        run: |
+          pip install -r requirements.txt
+          python main.py
+
+      - name: Commit files
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -a -m "update"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}

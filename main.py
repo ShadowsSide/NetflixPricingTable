@@ -60,7 +60,7 @@ try:
                 if currency != i['Currency']:
                     changelog.append({
                         'code':i['code'],
-                        'message': f'Old {i['Currency']}, New {currency}',
+                        'message': f'Old {i["Currency"]}, New {currency}',
                         'updateTime': today
                         })
                     myCol.update_one({'code':i['code']},{'Currency':currency,'updateTime': today})
@@ -79,8 +79,8 @@ try:
                         price = float(price)
                     else:
                         price = int(price)
-                    i[f'{plan}_CNY'] = round(price / j[currency] * j['CNY'],4)
-                    myCol.update_one({'code':i['code']},{f'{plan}_CNY':i[f'{plan}_CNY'],'updateTime': today})
+                    i[f"{plan}_CNY"] = round(price / j[currency] * j['CNY'],4)
+                    myCol.update_one({'code':i['code']},{f'{plan}_CNY':i[f"{plan}_CNY"],'updateTime': today})
                     if price != i[plan]:
                         changelog.append({
                             'code':i['code'],

@@ -14,7 +14,7 @@ def getCurrency(fullName:str) -> str:
     with open("countries.json", 'r', encoding="utf-8") as r:
         countries = json.loads(r.read())
         if fullName == 'US Dollars':
-            fullName == 'US Dollar'
+            fullName = 'US Dollar'
         for country in countries:
             if fullName.upper() in country["currency_name"].upper():
                 return country["currency"]
@@ -22,57 +22,19 @@ def getCurrency(fullName:str) -> str:
 
 
 try: 
-    data = {
-        "updateTime": datetime.now().strftime("%Y-%m-%d"),
-        "pricing": []
-    }
+    with open("data.json", 'r', encoding="utf-8") as r:
+        data = json.loads(r.read())
+    with open("changelog.json", 'r', encoding="utf-8") as r:
+        changelog = json.loads(r.read())
 
-    with open("netflix.json", 'r', encoding="utf-8") as r:
-        netflix = json.loads(r.read())
+    r = requests.get('https://raw.githubusercontent.com/DyAxy/ExchangeRatesTable/main/data.json',timeout=5)
+    j = r.json()['rates']
+    
+    curLog = len(changelog)
+    today = datetime.now().strftime("%Y-%m-%d")
     url = "https://help.netflix.com/node/24926/"
-    # netflix = [{"value":"BD"}]
-    for i in netflix:
-        r = requests.get(f'{url}{i["value"]}')
-        print(i["value"])
-        html = BeautifulSoup(r.text, 'html.parser')
-        sectionList = html.find_all('h3', string=lambda text: 'Pricing' in text)
+    d = 1
 
-        if len(sectionList) == 0:
-            pass
-        struc = {
-            "code": i["value"],
-            "Currency": None,
-            "Mobile": None,
-            "Basic": None,
-            "Standard with ads":None,
-            "Standard": None,
-            "Premium": None,
-            "updateTime": datetime.now().strftime("%Y-%m-%d")
-        }
-        for section in sectionList:
-            struc["Currency"] = getCurrency(re.search(r"\((.*?)\)", section.get_text()).group(1))
-            ul = section.find_next_sibling('ul')
-            for li in ul.find_all('li'):
-                # labels - ['Basic', ' $3.99/month']
-                labels = li.get_text().replace('\xa0', ' ').replace("\n","").split(":")
-                plan = labels[0].replace("*","")
-                if plan == "Standard with adverts":
-                    plan == 'Standard with ads'
-                price = labels[1].split('/')[0].replace(",","")
-                price = re.search(r"\d+(\.\d+)?",price).group(0)
-                if '.' in price:
-                    price = float(price)
-                else:
-                    price = int(price)
-                struc[plan] = price
-        data["pricing"].append(struc)
-
-
-    # Export Data to file
-    with open('data.json', 'w', encoding='utf-8') as file:
-        file.write(json.dumps(data))
-        
-    # Update Data to database
     with SSHTunnelForwarder(
         ssh_address_or_host=os.environ['SSHIP'],
         ssh_username='root',
@@ -81,14 +43,61 @@ try:
     ) as ssh:
         ssh.start()
         mongoClient = pymongo.MongoClient(host='127.0.0.1',port=ssh.local_bind_port)
-        myCol = mongoClient["daily"]["netflix"]
+        myCol = mongoClient["api"]["netflix"]
 
-        updateTime = {'updateTime':data['updateTime']}
-        hasData = myCol.find_one(updateTime)
-        if hasData is not None:
-            raise Exception("Data duplicated")
-        # todo check pricing is changed
-        r = myCol.insert_many(data['pricing'])
+        for i in data['pricing']:
+            print(d,len(data['pricing']))
+            d += 1
+            r = requests.get(f'{url}{i["code"]}')
+            html = BeautifulSoup(r.text, 'html.parser')
+            sectionList = html.find_all('h3', string=lambda text: 'Pricing' in text)
+    
+            if len(sectionList) == 0:
+                pass
+            isChanged = False
+            for section in sectionList:
+                currency = getCurrency(re.search(r"\((.*?)\)", section.get_text()).group(1))
+                if currency != i['Currency']:
+                    changelog.append({
+                        'code':i['code'],
+                        'message': f'Old {i['Currency']}, New {currency}',
+                        'updateTime': today
+                        })
+                    myCol.update_one({'code':i['code']},{'Currency':currency,'updateTime': today})
+                    i['Currency'] = currency
+    
+                ul = section.find_next_sibling('ul')
+                for li in ul.find_all('li'):
+                    # labels - ['Basic', ' $3.99/month']
+                    labels = li.get_text().replace('\xa0', ' ').replace("\n","").split(":")
+                    plan = labels[0].replace("*","")
+                    if plan == "Standard with adverts":
+                        plan = 'Standard with ads'
+                    price = labels[1].split('/')[0].replace(",","")
+                    price = re.search(r"\d+(\.\d+)?",price).group(0)
+                    if '.' in price:
+                        price = float(price)
+                    else:
+                        price = int(price)
+                    i[f'{plan}_CNY'] = round(price / j[currency] * j['CNY'],4)
+                    myCol.update_one({'code':i['code']},{f'{plan}_CNY':i[f'{plan}_CNY'],'updateTime': today})
+                    if price != i[plan]:
+                        changelog.append({
+                            'code':i['code'],
+                            'message': f'Old {plan}:{i[plan]}, New {plan}:{price}, Currency {currency}',
+                            'updateTime': today
+                            })
+                        myCol.update_one({'code':i['code']},{plan:price,'updateTime': today})
+                        i[plan] = price
+    
+
+    # Export Data to file
+    with open('data.json', 'w', encoding='utf-8') as file:
+        file.write(json.dumps(data))
+    if len(changelog) > curLog:
+        with open('changelog.json', 'w', encoding='utf-8') as file:
+            file.write(json.dumps(changelog))
+        
 
 
 except Exception as error:

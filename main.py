@@ -38,7 +38,7 @@ try:
     ) as ssh:
         ssh.start()
         mongoClient = pymongo.MongoClient(host='127.0.0.1',port=ssh.local_bind_port)
-        myCol = mongoClient["daily"]["netflix"]
+        myCol = mongoClient["api"]["netflix"]
         newData = []
 
         data = myCol.find()

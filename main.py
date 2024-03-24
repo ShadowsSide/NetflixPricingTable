@@ -13,6 +13,7 @@ from sshtunnel import SSHTunnelForwarder
 def getCurrency(fullName:str) -> str: 
     with open("countries.json", 'r', encoding="utf-8") as r:
         countries = json.loads(r.read())
+        # 部分为 US Dollars
         if fullName == 'US Dollars':
             fullName = 'US Dollar'
         for country in countries:
@@ -63,12 +64,17 @@ try:
     
                 ul = section.find_next_sibling('ul')
                 for li in ul.find_all('li'):
-                    # labels - ['Basic', ' $3.99/month']
+                    # 部分 plan : price / month 结构有问题
                     labels = li.get_text().replace('\xa0', ' ').replace("\n","").split(":")
                     plan = labels[0].replace("*","")
+                    # 部分 plan 的 Standard with ads 为 adverts
                     if plan == "Standard with adverts":
                         plan = 'Standard with ads'
-                    price = labels[1].split('/')[0].replace(",","")
+                    # 部分 price 的 . 为 ,
+                    if currency == 'BRL' or currency == 'CZK' or currency == 'CHF':
+                        price = labels[1].split('/')[0].replace(",",".")
+                    else:
+                        price = labels[1].split('/')[0].replace(",","")
                     price = re.search(r"\d+(\.\d+)?",price).group(0)
                     if '.' in price:
                         price = float(price)

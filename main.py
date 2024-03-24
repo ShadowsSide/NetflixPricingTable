@@ -22,8 +22,6 @@ def getCurrency(fullName:str) -> str:
 
 
 try: 
-    with open("data.json", 'r', encoding="utf-8") as r:
-        data = json.loads(r.read())
     with open("changelog.json", 'r', encoding="utf-8") as r:
         changelog = json.loads(r.read())
 
@@ -33,7 +31,6 @@ try:
     curLog = len(changelog)
     today = datetime.now().strftime("%Y-%m-%d")
     url = "https://help.netflix.com/node/24926/"
-    d = 1
 
     with SSHTunnelForwarder(
         ssh_address_or_host=os.environ['SSHIP'],
@@ -44,10 +41,9 @@ try:
         ssh.start()
         mongoClient = pymongo.MongoClient(host='127.0.0.1',port=ssh.local_bind_port)
         myCol = mongoClient["api"]["netflix"]
+        data = myCol.find()
 
-        for i in data['pricing']:
-            print(d,len(data['pricing']))
-            d += 1
+        for i in data:
             r = requests.get(f'{url}{i["code"]}')
             html = BeautifulSoup(r.text, 'html.parser')
             sectionList = html.find_all('h3', string=lambda text: 'Pricing' in text)

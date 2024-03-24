@@ -24,14 +24,12 @@ def getCurrency(fullName:str) -> str:
 try: 
     with open("changelog.json", 'r', encoding="utf-8") as r:
         changelog = json.loads(r.read())
-
     r = requests.get('https://raw.githubusercontent.com/DyAxy/ExchangeRatesTable/main/data.json',timeout=5)
     j = r.json()['rates']
-    
+
     curLog = len(changelog)
     today = datetime.now().strftime("%Y-%m-%d")
     url = "https://help.netflix.com/node/24926/"
-
     with SSHTunnelForwarder(
         ssh_address_or_host=os.environ['SSHIP'],
         ssh_username='root',
@@ -40,9 +38,10 @@ try:
     ) as ssh:
         ssh.start()
         mongoClient = pymongo.MongoClient(host='127.0.0.1',port=ssh.local_bind_port)
-        myCol = mongoClient["api"]["netflix"]
-        data = myCol.find()
+        myCol = mongoClient["daily"]["netflix"]
+        newData = []
 
+        data = myCol.find()
         for i in data:
             r = requests.get(f'{url}{i["code"]}')
             html = BeautifulSoup(r.text, 'html.parser')
@@ -85,15 +84,16 @@ try:
                             })
                         myCol.update_one({'code':i['code']},{"$set":{plan:price,'updateTime': today}})
                         i[plan] = price
-    
+            i.pop('_id', None)
+            newData.append(i)
 
     # Export Data to file
     with open('data.json', 'w', encoding='utf-8') as file:
-        file.write(json.dumps(data))
+        file.write(json.dumps(newData))
     if len(changelog) > curLog:
         with open('changelog.json', 'w', encoding='utf-8') as file:
             file.write(json.dumps(changelog))
-        
+
 
 
 except Exception as error:

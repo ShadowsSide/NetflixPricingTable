@@ -63,7 +63,7 @@ try:
                         'message': f'Old {i["Currency"]}, New {currency}',
                         'updateTime': today
                         })
-                    myCol.update_one({'code':i['code']},{'Currency':currency,'updateTime': today})
+                    myCol.update_one({'code':i['code']},{"$set":{'Currency':currency,'updateTime': today}})
                     i['Currency'] = currency
     
                 ul = section.find_next_sibling('ul')
@@ -80,14 +80,14 @@ try:
                     else:
                         price = int(price)
                     i[f"{plan}_CNY"] = round(price / j[currency] * j['CNY'],4)
-                    myCol.update_one({'code':i['code']},{f'{plan}_CNY':i[f"{plan}_CNY"],'updateTime': today})
+                    myCol.update_one({'code':i['code']},{"$set":{f'{plan}_CNY':i[f"{plan}_CNY"],'updateTime': today}})
                     if price != i[plan]:
                         changelog.append({
                             'code':i['code'],
                             'message': f'Old {plan}:{i[plan]}, New {plan}:{price}, Currency {currency}',
                             'updateTime': today
                             })
-                        myCol.update_one({'code':i['code']},{plan:price,'updateTime': today})
+                        myCol.update_one({'code':i['code']},{"$set":{plan:price,'updateTime': today}})
                         i[plan] = price
     
 
